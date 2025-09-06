@@ -199,6 +199,142 @@
 - 数据库驱动：pg、mysql2、mssql、sqlite3，后续扩展其它云数仓 SDK。
 - 安全：.env 管理、只读账号、TLS、可选本地运行优先。
 
+### 前端（Web，Ant Design）详细需求
+
+- **整体风格**
+  - **简约大方**，以信息密度适中为原则，强调留白与层次；遵循 Ant Design 设计语言。
+  - 支持浅色/深色模式切换（可选），字号与行高遵循 AntD 默认，内容区最大宽度 1200px。
+
+- **信息架构与导航**
+  - 采用 `Layout` + `Sider` 左侧导航 + `Header` 顶部工具条 + `Content` 主内容。
+  - 左侧导航分组：数据源、Schema 选择、上下文/约束、任务与生成、历史与版本、设置。
+  - 顶部区域提供全局搜索（表/列/模板）、帮助入口、主题/语言切换。
+
+- **关键页面/流程（向导化）**
+  1) 数据源与连接
+     - 表单字段：方言、主机、端口、数据库、用户名、密码/密钥、连接字符串（互斥）、SSL 选项。
+     - 操作：测试连接（`Button` + `Result`）、保存会话（仅元数据，不持久化敏感信息）。
+     - 组件：`Form`、`Input`、`Select`、`Input.Password`、`Alert`、`Result`。
+  2) Schema 与表选择
+     - 按库/Schema/表的 3 级结构展示；支持搜索与正则过滤、批量选择、全选/反选。
+     - 表清单使用 `Table`（虚拟滚动）或 `Tree` + `TreeSelect`；展示列计数、索引、备注。
+     - 可选采样：每表 N 行，展示在 `Drawer`/`Modal` 中，提供脱敏预览。
+  3) 上下文与约束配置
+     - 业务术语表（`EditableProTable` 或 `Table` + 可编辑单元格）、默认时间范围、时区、只读约束、输出格式（sql_only/with_comment/json）。
+     - 敏感列标记：`Tag` + `Checkbox`；脱敏策略选择（掩码/泛化/哈希）。
+  4) 任务与生成
+     - Tab 分为：生成 SQL、解释 SQL、优化 SQL、错误修复、迁移改写。
+     - 输入区：`Input.TextArea`/`Monaco`（SQL 高亮）用于问题/SQL/错误粘贴；右侧为提示词预览。
+     - 行为：生成提示词、复制、导出为 JSON、保存版本、对比版本（`Diff` 视图）。
+  5) 历史与版本
+     - 列表展示历史会话、Schema 快照与提示词版本；支持搜索、筛选、标签。
+     - 详情页展示上下文、模板、生成记录，支持回滚/复用。
+  6) 设置
+     - 模型与 token 预算偏好（仅用于提示词长度控制，不含直连 LLM）；
+     - 性能与裁剪策略（强约束/丰富上下文）、下载与隐私设置。
+
+- **核心组件清单（AntD）**
+  - 布局：`Layout`、`Sider`、`Header`、`Content`、`Breadcrumb`。
+  - 表单与输入：`Form`、`Input`、`Select`、`InputNumber`、`Switch`、`Cascader`、`TreeSelect`、`Upload`。
+  - 数据展示：`Table`（支持虚拟滚动）、`Descriptions`、`Collapse`、`Tabs`、`Tag`、`Badge`、`Result`、`Empty`。
+  - 反馈：`Modal`、`Drawer`、`Alert`、`Spin`、`Skeleton`、`Progress`、`Notification`。
+  - 其他：`Steps`（向导）、`Space`、`Divider`、`Tooltip`、`Popover`、`CopyToClipboard`（第三方）。
+
+- **交互与可用性**
+  - 表/列大量时启用虚拟化与分页；批量选择提供“只选相关表”快捷选项（基于关键词/外键推断）。
+  - 提示词预览支持一键复制、JSON/文本切换、超长折叠；失败时展示结构化错误与建议。
+  - 上传 DDL/JSON 支持拖拽，解析过程展示进度与日志（`Progress` + `Collapse`）。
+
+- **状态管理与数据流**
+  - 建议：React + React Router + React Query（服务端状态）+ Zustand/Recoil（本地向导状态）。
+  - 统一错误边界与请求拦截；请求与响应类型以 OpenAPI/TypeScript 接口约束。
+
+- **国际化与无障碍**
+  - i18n：中文为默认，结构预留英文文案（i18next）。
+  - 无障碍：为关键按钮与表格列提供 aria-label，键盘可达性，颜色对比度合规。
+
+- **项目结构（建议）**
+  - `src/pages`（分页面目录）、`src/components`（通用组件）、`src/features`（领域功能）、`src/services`（API 客户端）、`src/store`（状态）、`src/styles`（主题）。
+
+### 后端（Node.js）详细需求
+
+- **技术选型**
+  - Node.js LTS + TypeScript；Web 框架优先 `Fastify` 或 `Express`（性能优先建议 Fastify）。
+  - 校验：`zod`/`joi`；日志：`pino`；配置：`dotenv`/`env-var`；任务队列（可选）：`bullmq`。
+  - 数据库驱动：`pg`、`mysql2`、`mssql`、`sqlite3`；应用自身持久层（可选）用 `SQLite`/`PostgreSQL`。
+
+- **模块划分**
+  - `introspection`：按方言实现元数据采集（表/列/约束/视图/注释/样本）。
+  - `schema-model`：统一 JSON 模型映射与校验；ER 推断；相似度检索（关键词/注释）。
+  - `masking`：敏感列识别与脱敏策略（掩码/泛化/哈希）。
+  - `templates`：任务类型与方言模板库 + few-shot 示例管理。
+  - `prompt-engine`：上下文裁剪、预算控制、输出格式化与安全红线检查。
+  - `jobs`：长任务管理（采集/解析），状态与进度（queued/running/succeeded/failed）。
+  - `api`：路由与控制器；`middlewares`：鉴权、限流、CORS、请求日志、错误处理中间件。
+
+- **API 契约（扩展与细化）**
+  - `POST /api/introspect`
+    - 功能：建立只读连接，采集指定 schemas/表，返回 JobId 或同步结果（按数据量决定）。
+    - 入参：`connection`、`options`（参考现有草案，增加 `async: boolean`, `includeComments: boolean`）。
+    - 出参：`{ jobId?, schema?, warnings?, requestId }`。
+  - `GET /api/jobs/:id`
+    - 功能：查询长任务状态与进度，返回阶段日志与最终结果（schema JSON）。
+    - 出参：`{ id, status, progress, logs: string[], result? }`。
+  - `POST /api/upload-ddl`
+    - 功能：上传 DDL/CSV/JSON，解析为统一 Schema；支持 zip；可选样本数据。
+    - 入参：`multipart/form-data`，字段：`file`, `dialect?`, `sampling?`。
+    - 出参：`{ schema, warnings?, requestId }`。
+  - `POST /api/generate-prompt`
+    - 功能：基于统一 Schema 与任务输入生成提示词（文本 + 结构化 JSON）。
+    - 入参：`{ taskType, dialect, schema|schemaRef, question|sql|error, constraints, context }`。
+    - 出参：`{ promptText, promptJson, budget: { tokens }, redFlags?: string[] }`。
+  - `GET /api/dialects`
+    - 功能：列出支持方言与能力矩阵（采集/模板/迁移支持）。
+  - `GET /api/prompt-templates`
+    - 功能：列出任务类型与方言的模板摘要；支持查询 `?taskType=&dialect=`。
+  - `POST /api/schema/search`
+    - 功能：在 Schema JSON 中按关键词检索相关表/列；用于前端“只选相关表”。
+
+- **安全与合规**
+  - 最小权限：仅使用只读连接；敏感字段默认脱敏；严禁持久化用户凭据。
+  - CORS：允许可配置域名；速率限制（IP + 路径维度）；请求体大小上限。
+  - 审计：记录请求 `requestId`、调用方、结果摘要；日志脱敏（掩盖密码/连接串）。
+
+- **配置与运维**
+  - 环境变量：`PORT`、`ALLOWED_ORIGINS`、`LOG_LEVEL`、`JOB_CONCURRENCY`、`MAX_SAMPLE_ROWS`、`DEFAULT_TOKEN_BUDGET`。
+  - 观测：结构化日志 + 健康检查 `GET /healthz`；指标（可选 Prometheus 导出）。
+
+- **错误模型**
+  - 统一错误响应：`{ code, message, details?, requestId }`；分类：`VALIDATION_ERROR`、`CONNECTION_ERROR`、`TIMEOUT`、`SERVER_ERROR`。
+
+### 前后端契约与文档
+
+- 使用 OpenAPI 描述 API；由此生成 TypeScript 客户端类型与请求方法；在前端编译期校验。
+- 提供接口示例与响应示例，覆盖错误场景与边界参数。
+
+### 部署与交付
+
+- 前端：Vite/CRA 构建，开启代码分割与静态资源压缩；部署至静态站点（S3/OSS + CDN）。
+- 后端：容器化（Dockerfile），无状态服务；支持水平扩展与只读网络出站策略。
+- 环境：开发/测试/生产隔离，开关项（样本采样、日志级别、模板实验）可配置。
+
+### 性能预算目标（Web + API）
+
+- 首屏加载：≤ 2s（CDN 命中，网络良好）；交互操作反馈 ≤ 200ms（本地 UI）。
+- 中等规模 Schema（表 ≤ 200、列 ≤ 5000）采集 ≤ 5s；相关性检索 ≤ 200ms；提示词生成 ≤ 300ms（不含外部 LLM）。
+
+### 验收标准补充（针对 Web + Node.js）
+
+- 前端（AntD）
+  - 提供完整向导流程 5 步；表选择性能良好（虚拟滚动/分页）。
+  - 提示词预览支持文本/JSON 切换与一键复制；失败提示清晰可操作。
+  - 支持 DDL/JSON 上传解析与脱敏预览；历史与版本可查看与复用。
+- 后端（Node.js）
+  - 实现上述 6 个 API；提供 OpenAPI 文档与健康检查；错误模型统一。
+  - 支持 PostgreSQL 与 MySQL 采集；含样本行采样与可配置上限；敏感字段默认脱敏。
+  - 具备基础速率限制、CORS 白名单与请求体大小限制；日志脱敏。
+
+
 ### 验收标准
 
 - 支持 PostgreSQL 与 MySQL 的元数据采集与最小化上下文裁剪。
