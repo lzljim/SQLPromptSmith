@@ -1,0 +1,1 @@
+export function pruneSchemaByKeywords(schema: unknown, _keywords: string[]): unknown { return schema; }

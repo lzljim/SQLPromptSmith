@@ -1,0 +1,94 @@
+openapi: 3.0.3
+info: 
+  title: SQLPromptSmith API
+  version: 0.1.0
+  description: AI SQL 提示词生成工具 API
+paths:
+  /healthz:
+    get:
+      summary: 健康检查
+      description: 检查服务是否正常运行
+      responses:
+        '200':
+          description: 服务正常
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+  /api/generate-prompt:
+    post:
+      summary: 生成 SQL 提示词
+      description: 根据任务类型、数据库方言和 Schema 生成 SQL 提示词
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - taskType
+                - dialect
+              properties:
+                taskType:
+                  type: string
+                  enum: [generate_sql, explain_sql, optimize_sql]
+                  description: 任务类型
+                dialect:
+                  type: string
+                  enum: [postgres, mysql]
+                  description: 数据库方言
+                schema:
+                  type: object
+                  description: 数据库 Schema（可选）
+                question:
+                  type: string
+                  description: 问题描述（生成 SQL 时必需）
+                sql:
+                  type: string
+                  description: SQL 语句（解释或优化 SQL 时必需）
+                constraints:
+                  type: object
+                  description: 约束条件（可选）
+                context:
+                  type: object
+                  description: 上下文信息（可选）
+      responses:
+        '200':
+          description: 成功生成提示词
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  promptText:
+                    type: string
+                    description: 文本格式的提示词
+                  promptJson:
+                    type: object
+                    description: JSON 格式的提示词
+                  budget:
+                    type: object
+                    properties:
+                      tokens:
+                        type: number
+                        description: Token 预算
+        '400':
+          description: 请求参数错误
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  code:
+                    type: string
+                    example: "VALIDATION_ERROR"
+                  message:
+                    type: string
+                    example: "invalid body"
+                  details:
+                    type: object
+                    description: 详细错误信息
